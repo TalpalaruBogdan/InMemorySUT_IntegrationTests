@@ -31,12 +31,17 @@ app.UseHttpsRedirection();
 
 app.MapPost("/testmodels", async ([FromBody] TestModel testModel, ITestModelRepository repo) =>
 {
-    if (repo.GetTestModelByIdAsync(testModel.Id) is not null)
+    if (testModel is not TestModel)
     {
-        await repo.CreateTestModelAsync(testModel);
-        return Results.Created($"/testmodels/{testModel.Id}", testModel);
+        return Results.UnprocessableEntity("Invalid data");
     }
-    return Results.Conflict($"TestModel with id {testModel.Id} already exists");
+    var existingEntry = await repo.GetTestModelByIdAsync(testModel.Id);
+    if (existingEntry is not null)
+    {
+        return Results.Conflict($"TestModel with id {testModel.Id} already exists");
+    }
+    await repo.CreateTestModelAsync(testModel);
+    return Results.Created($"/testmodels/{testModel.Id}", testModel);
 
 })
 .WithName("CreateTestModel")

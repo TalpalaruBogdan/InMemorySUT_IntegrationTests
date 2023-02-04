@@ -4,7 +4,9 @@ using FluentAssertions;
 using FluentAssertions.Execution;
 using IntegrationTests.Factories;
 using IntegrationTests.Fixtures;
+using Newtonsoft.Json;
 using System.Net.Http.Json;
+using System.Text;
 using TestModelServiceApi;
 
 namespace IntegrationTests.Tests
@@ -46,6 +48,19 @@ namespace IntegrationTests.Tests
         }
 
         [Fact]
+        public async Task Create_Returns_UnprocessableEntity_For_Duplicated_Entry()
+        {
+            // Arrange
+            var testData = "{\"inexistentKey\":\"inexistentValue\"}";
+
+            // Act
+            var result = await _client.PostAsJsonAsync("/testmodels", testData);
+
+            // Assert
+            result.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
+        }
+
+        [Fact]
         public async Task Gets_TestModels()
         {
             // Arrange
@@ -61,6 +76,18 @@ namespace IntegrationTests.Tests
                 result!.Should().HaveCount(_factory.TestModelContext.TestModels.Count());
                 result!.ToList().Should().BeEquivalentTo(_factory.TestModelContext.TestModels.ToList());
             }
+        }
+
+        [Fact]
+        public async Task Get_Returns_NotFound_For_Inexistent_Entry()
+        {
+            // Arrange
+
+            // Act
+            var result = await _client.GetAsync($"/testmodels/{Guid.NewGuid()}");
+
+            // Assert
+            result.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
         }
 
         [Fact]
@@ -100,6 +127,32 @@ namespace IntegrationTests.Tests
                 result!.StatusCode.Should().Be(System.Net.HttpStatusCode.NoContent);
                 _factory.TestModelContext.TestModels.FirstOrDefault(x => x.Id == testData.Id).Should().BeNull();
             }
+        }
+
+        [Fact]
+        public async Task Delete_Returns_NotFound_For_Inexistent_Entry()
+        {
+            // Arrange
+
+            // Act
+            var result = await _client.DeleteAsync($"/testmodels/{Guid.NewGuid()}");
+
+            // Assert
+            result.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
+        }
+
+        [Fact]
+        public async Task Update_Returns_NotFound_For_Inexistent_Entry()
+        {
+            // Arrange
+            var testData = _fixture.DynamicTestModel;
+            var httpContent = new StringContent(JsonConvert.SerializeObject(testData), Encoding.UTF8, "application/json");
+
+            // Act
+            var result = await _client.PutAsync($"/testmodels/{testData.Id}", httpContent);
+
+            // Assert
+            result.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
         }
     }
 }
